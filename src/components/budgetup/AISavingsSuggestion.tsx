@@ -88,20 +88,61 @@ export function AISavingsSuggestion({ userId }: AISavingsSuggestionProps) {
         </Button>
 
         {suggestion && (
-          <div className="mt-6 space-y-4 p-4 bg-blue-50 rounded-lg border">
-            <div className="space-y-2">
-              <h4 className="font-semibold text-blue-800">Suggested Monthly Savings:</h4>
-              <p className="text-2xl font-bold text-blue-600">
+          <div className="mt-6 space-y-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+            <div className="text-center space-y-2 pb-4 border-b border-blue-200">
+              <h4 className="font-semibold text-blue-800 text-lg">💰 Suggested Monthly Savings</h4>
+              <p className="text-3xl font-bold text-blue-600">
                 {formatGHS(suggestion.suggestedSavingsGHS)}
               </p>
             </div>
             
-            <div className="space-y-2">
-              <h4 className="font-semibold text-blue-800">Rationale & Advice:</h4>
-              <div className="max-h-60 overflow-y-auto">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {suggestion.savingsRationale}
-                </p>
+            <div className="space-y-3">
+              <h4 className="font-semibold text-blue-800 text-lg flex items-center gap-2">
+                <span>📋</span> Personalized Financial Advice
+              </h4>
+              <div className="max-h-80 overflow-y-auto pr-2">
+                <div className="text-sm text-gray-700 leading-relaxed space-y-3">
+                  {suggestion.savingsRationale.split('•').filter(item => item.trim()).map((item, index) => {
+                    const trimmedItem = item.trim();
+                    if (!trimmedItem) return null;
+                    
+                    // Extract the category and content
+                    const colonIndex = trimmedItem.indexOf(':');
+                    if (colonIndex > 0) {
+                      const category = trimmedItem.substring(0, colonIndex).trim();
+                      const content = trimmedItem.substring(colonIndex + 1).trim();
+                      
+                      // Get emoji for category
+                      const getEmoji = (cat: string) => {
+                        if (cat.toLowerCase().includes('income')) return '💵';
+                        if (cat.toLowerCase().includes('spending')) return '📊';
+                        if (cat.toLowerCase().includes('strategy')) return '🎯';
+                        if (cat.toLowerCase().includes('budget')) return '📝';
+                        if (cat.toLowerCase().includes('emergency')) return '🛡️';
+                        if (cat.toLowerCase().includes('next')) return '🚀';
+                        return '💡';
+                      };
+                      
+                      return (
+                        <div key={index} className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg flex-shrink-0 mt-0.5">{getEmoji(category)}</span>
+                            <div className="flex-1">
+                              <h5 className="font-medium text-blue-700 mb-2">{category}</h5>
+                              <p className="text-gray-600 leading-relaxed">{content}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div key={index} className="bg-white p-3 rounded-lg border border-blue-100">
+                        <p className="text-gray-600">{trimmedItem}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

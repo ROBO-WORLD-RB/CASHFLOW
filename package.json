@@ -12,6 +12,7 @@
     "@genkit-ai/core": "^1.14.1",
     "@genkit-ai/firebase": "^1.14.1",
     "@genkit-ai/googleai": "^1.14.1",
+    "@google/generative-ai": "^0.24.1",
     "@opentelemetry/exporter-jaeger": "^2.0.1",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",

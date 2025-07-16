@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Wallet, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,145 +15,40 @@ import { GroupSavingsTrackerTable } from '@/components/budgetup/GroupSavingsTrac
 import { BudgetTable } from '@/components/budgetup/BudgetTable';
 import { VisualReport } from '@/components/budgetup/VisualReport';
 import { SavingsEntryForm } from '@/components/budgetup/SavingsEntryForm';
+import { TransactionHistory } from '@/components/budgetup/TransactionHistory';
 import { formatGHS, SupportedCurrency } from '@/lib/currencyUtils';
+import { useFinancialStore } from '@/store/useFinancialStore';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userName, setUserName] = useState('');
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   
-  // State for income and expenses
-  const [income, setIncome] = useState(0);
-  const [expenses, setExpenses] = useState(0);
-  const [incomeEntries, setIncomeEntries] = useState<Array<{ id: string; amount: number; description: string; date: Date }>>([]);
-  const [expenseEntries, setExpenseEntries] = useState<Array<{ id: string; amount: number; description: string; date: Date }>>([]);
-  
-  // State for personal savings
-  const [savingsGoal, setSavingsGoal] = useState<{
-    id: string;
-    targetAmount?: number;
-    currency: SupportedCurrency;
-    startDate: Date;
-    endDate: Date;
-    createdAt: Date;
-  } | null>(null);
-  const [savingsEntries, setSavingsEntries] = useState<Array<{ id: string; amount: number; currency: SupportedCurrency; description: string; date: Date }>>([]);
-  
-  // State for group savings
-  const [groupGoals, setGroupGoals] = useState<Array<{
-    id: string;
-    name: string;
-    description?: string;
-    targetAmount: number;
-    currency: SupportedCurrency;
-    participants: string[];
-    createdAt: Date;
-  }>>([]);
-  const [groupContributions, setGroupContributions] = useState<Array<{
-    id: string;
-    groupId: string;
-    amount: number;
-    currency: SupportedCurrency;
-    participantName: string;
-    date: Date;
-    time: string;
-    description?: string;
-  }>>([]);
-  
+  // Use financial store
+  const { 
+    getTotalIncome, 
+    getTotalExpenses, 
+    getAvailableBalance,
+    transactions,
+    savingsGoals,
+    savingsEntries,
+    groupGoals,
+    groupContributions
+  } = useFinancialStore();
+
   useEffect(() => {
-    // Check authentication status
-    const authStatus = localStorage.getItem('isAuthenticated');
-    const name = localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'User';
-    
-    if (authStatus !== 'true') {
-      router.push('/auth');
-    } else {
-      setIsAuthenticated(true);
-      setUserName(name);
-    }
-  }, [router]);
+    // The useAuth hook handles authentication checking
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
-    router.push('/auth');
-  };
-
-  // Handler functions
-  const handleIncomeUpdate = (amount: number, description: string) => {
-    const newEntry = {
-      id: `income_${Date.now()}`,
-      amount,
-      description,
-      date: new Date()
-    };
-    setIncomeEntries([...incomeEntries, newEntry]);
-    setIncome(income + amount);
-  };
-
-  const handleExpenseUpdate = (amount: number, description: string) => {
-    const newEntry = {
-      id: `expense_${Date.now()}`,
-      amount,
-      description,
-      date: new Date()
-    };
-    setExpenseEntries([...expenseEntries, newEntry]);
-    setExpenses(expenses + amount);
-  };
-
-  const handleSavingsGoalSet = (goal: {
-    id: string;
-    targetAmount?: number;
-    currency: SupportedCurrency;
-    startDate: Date;
-    endDate: Date;
-    createdAt: Date;
-  }) => {
-    setSavingsGoal(goal);
-  };
-
-  const handleSavingsUpdate = (amount: number, description: string, currency: SupportedCurrency) => {
-    const newEntry = {
-      id: `savings_${Date.now()}`,
-      amount,
-      currency,
-      description,
-      date: new Date()
-    };
-    setSavingsEntries([...savingsEntries, newEntry]);
-  };
-
-  const handleGroupGoalCreate = (goal: {
-    id: string;
-    name: string;
-    description?: string;
-    targetAmount: number;
-    currency: SupportedCurrency;
-    participants: string[];
-    createdAt: Date;
-  }) => {
-    setGroupGoals([...groupGoals, goal]);
-  };
-
-  const handleGroupContributionAdd = (groupId: string, contribution: {
-    amount: number;
-    currency: SupportedCurrency;
-    participantName: string;
-    date: Date;
-    time: string;
-    description?: string;
-  }) => {
-    const newContribution = {
-      ...contribution,
-      id: `contribution_${Date.now()}`,
-      groupId, // Add the missing groupId property
-    };
-    setGroupContributions([...groupContributions, newContribution]);
-  };
-
-  const handleBudgetUpdate = () => {};
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -186,12 +81,12 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-6">
               <div className="hidden sm:block text-right">
                 <p className="text-sm text-gray-500">Welcome back,</p>
-                <p className="font-semibold text-gray-800">{userName}</p>
+                <p className="font-semibold text-gray-800">{user?.name || 'User'}</p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleLogout}
+                onClick={logout}
                 className="flex items-center space-x-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
@@ -218,10 +113,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(income)}</p>
+                <p className="text-4xl font-bold text-white">{formatGHS(getTotalIncome())}</p>
                 <div className="flex items-center justify-between text-green-100 text-sm">
-                  <span>{incomeEntries.length} entries</span>
-                  <span className="bg-white/20 px-2 py-1 rounded-full">+{income > 0 ? '100%' : '0%'}</span>
+                  <span>{transactions.filter(t => t.type === 'income').length} entries</span>
+                  <span className="bg-white/20 px-2 py-1 rounded-full">+{getTotalIncome() > 0 ? '100%' : '0%'}</span>
                 </div>
               </div>
             </CardContent>
@@ -239,10 +134,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(expenses)}</p>
+                <p className="text-4xl font-bold text-white">{formatGHS(getTotalExpenses())}</p>
                 <div className="flex items-center justify-between text-red-100 text-sm">
-                  <span>{expenseEntries.length} entries</span>
-                  <span className="bg-white/20 px-2 py-1 rounded-full">{income > 0 ? Math.round((expenses/income)*100) : 0}% of income</span>
+                  <span>{transactions.filter(t => t.type === 'expense').length} entries</span>
+                  <span className="bg-white/20 px-2 py-1 rounded-full">{getTotalIncome() > 0 ? Math.round((getTotalExpenses()/getTotalIncome())*100) : 0}% of income</span>
                 </div>
               </div>
             </CardContent>
@@ -250,29 +145,29 @@ export default function DashboardPage() {
 
           {/* Balance Card */}
           <Card className={`relative overflow-hidden border-0 shadow-lg text-white ${
-            income - expenses >= 0 
+            getAvailableBalance() >= 0 
               ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
               : 'bg-gradient-to-br from-orange-500 to-red-600'
           }`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
             <CardHeader className="relative z-10">
               <CardTitle className="text-white/90 text-lg font-medium flex items-center gap-2">
-                <span className="text-2xl">{income - expenses >= 0 ? '📈' : '⚠️'}</span>
-                {income - expenses >= 0 ? 'Available' : 'Deficit'}
+                <span className="text-2xl">{getAvailableBalance() >= 0 ? '📈' : '⚠️'}</span>
+                {getAvailableBalance() >= 0 ? 'Available' : 'Deficit'}
               </CardTitle>
-              <CardDescription className={income - expenses >= 0 ? 'text-blue-100' : 'text-orange-100'}>
-                {income - expenses >= 0 ? 'Ready to save or invest' : 'Review your spending'}
+              <CardDescription className={getAvailableBalance() >= 0 ? 'text-blue-100' : 'text-orange-100'}>
+                {getAvailableBalance() >= 0 ? 'Ready to save or invest' : 'Review your spending'}
               </CardDescription>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(Math.abs(income - expenses))}</p>
+                <p className="text-4xl font-bold text-white">{formatGHS(Math.abs(getAvailableBalance()))}</p>
                 <div className={`flex items-center justify-between text-sm ${
-                  income - expenses >= 0 ? 'text-blue-100' : 'text-orange-100'
+                  getAvailableBalance() >= 0 ? 'text-blue-100' : 'text-orange-100'
                 }`}>
                   <span>After expenses</span>
                   <span className="bg-white/20 px-2 py-1 rounded-full">
-                    {income > 0 ? Math.round(((income - expenses)/income)*100) : 0}%
+                    {getTotalIncome() > 0 ? Math.round((getAvailableBalance()/getTotalIncome())*100) : 0}%
                   </span>
                 </div>
               </div>
@@ -353,22 +248,17 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">📊 Track Your Finances</h2>
               <p className="text-gray-600">Monitor your income and expenses to stay on top of your financial health</p>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               <div className="space-y-6">
-                <ManualEntry 
-                  type="income" 
-                  onUpdate={handleIncomeUpdate} 
-                  total={income} 
-                />
+                <ManualEntry type="income" />
               </div>
               <div className="space-y-6">
-                <ManualEntry 
-                  type="expense" 
-                  onUpdate={handleExpenseUpdate} 
-                  total={expenses} 
-                />
+                <ManualEntry type="expense" />
               </div>
             </div>
+            
+            {/* Transaction History */}
+            <TransactionHistory />
           </TabsContent>
 
           {/* AI Advisor Tab */}
@@ -377,7 +267,7 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">🤖 AI Financial Advisor</h2>
               <p className="text-gray-600">Get personalized savings advice powered by artificial intelligence</p>
             </div>
-            <AISavingsSuggestion userId="user123" />
+            <AISavingsSuggestion />
           </TabsContent>
 
           {/* Personal Savings Tab */}
@@ -388,17 +278,11 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1 space-y-6">
-                <SavingsGoalSetup 
-                  onGoalSet={handleSavingsGoalSet} 
-                  currentGoal={savingsGoal}
-                />
-                <SavingsEntryForm onUpdate={handleSavingsUpdate} />
+                <SavingsGoalSetup />
+                <SavingsEntryForm />
               </div>
               <div className="lg:col-span-2">
-                <SavingsTrackerTable 
-                  savingsEntries={savingsEntries}
-                  savingsGoal={savingsGoal}
-                />
+                <SavingsTrackerTable />
               </div>
             </div>
           </TabsContent>
@@ -410,12 +294,8 @@ export default function DashboardPage() {
               <p className="text-gray-600">Collaborate with friends and family on shared financial goals</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <CreateGroupGoalForm onSubmit={handleGroupGoalCreate} />
-              <GroupSavingsTrackerTable 
-                groupGoals={groupGoals}
-                groupContributions={groupContributions}
-                onAddContribution={handleGroupContributionAdd}
-              />
+              <CreateGroupGoalForm />
+              <GroupSavingsTrackerTable />
             </div>
           </TabsContent>
 
@@ -425,7 +305,7 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">📝 Budget Planner</h2>
               <p className="text-gray-600">Create and manage your monthly budget effectively</p>
             </div>
-            <BudgetTable onBudgetUpdate={handleBudgetUpdate} />
+            <BudgetTable />
           </TabsContent>
 
           {/* Reports Tab */}
@@ -435,9 +315,9 @@ export default function DashboardPage() {
               <p className="text-gray-600">Visualize your financial data with comprehensive reports and charts</p>
             </div>
             <VisualReport 
-              income={income}
-              expenses={expenses}
-              savingsGoal={savingsGoal}
+              income={getTotalIncome()}
+              expenses={getTotalExpenses()}
+              savingsGoal={savingsGoals[0] || null}
               savingsEntries={savingsEntries}
               groupSavings={groupContributions}
             />

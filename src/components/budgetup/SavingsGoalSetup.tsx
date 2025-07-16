@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Target, Calendar, DollarSign } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Target, Calendar, DollarSign, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,61 +10,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { SUPPORTED_CURRENCIES, SupportedCurrency } from '@/lib/currencyUtils';
+import { SUPPORTED_CURRENCIES, formatGHS } from '@/lib/currencyUtils';
+import { createSavingsGoalSchema, CreateSavingsGoalFormData } from '@/lib/validations';
+import { useFinancialStore } from '@/store/useFinancialStore';
 import { toast } from 'sonner';
 
-interface SavingsGoal {
-  id: string;
-  targetAmount?: number;
-  currency: SupportedCurrency;
-  startDate: Date;
-  endDate: Date;
-  createdAt: Date;
-}
+export function SavingsGoalSetup() {
+  const { savingsGoals, addSavingsGoal, updateSavingsGoal } = useFinancialStore();
+  
+  // Get the active goal (assuming one active goal for now)
+  const currentGoal = savingsGoals.find(goal => goal.isActive) || null;
 
-interface SavingsGoalSetupProps {
-  onGoalSet: (goal: SavingsGoal) => void;
-  currentGoal?: SavingsGoal | null;
-}
-
-export function SavingsGoalSetup({ onGoalSet, currentGoal }: SavingsGoalSetupProps) {
-  const [targetAmount, setTargetAmount] = useState(currentGoal?.targetAmount?.toString() || '');
-  const [currency, setCurrency] = useState<SupportedCurrency>(currentGoal?.currency || 'GHS');
-  const [startDate, setStartDate] = useState<Date | undefined>(currentGoal?.startDate || new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(currentGoal?.endDate);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!startDate || !endDate) {
-      toast.error('Please select both start and end dates');
-      return;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting }
+  } = useForm<CreateSavingsGoalFormData>({
+    resolver: zodResolver(createSavingsGoalSchema),
+    defaultValues: {
+      title: currentGoal?.title || '',
+      targetAmount: currentGoal?.targetAmount || undefined,
+      currency: currentGoal?.currency || 'GHS',
+      startDate: currentGoal?.startDate || new Date(),
+      endDate: currentGoal?.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      isActive: true
     }
+  });
 
-    if (endDate <= startDate) {
-      toast.error('End date must be after start date');
-      return;
-    }
+  const startDate = watch('startDate');
+  const endDate = watch('endDate');
+  const currency = watch('currency');
 
-    setIsLoading(true);
-
+  const onSubmit = async (data: CreateSavingsGoalFormData) => {
     try {
-      const goal: SavingsGoal = {
-        id: currentGoal?.id || `goal_${Date.now()}`,
-        targetAmount: targetAmount ? parseFloat(targetAmount) : undefined,
-        currency,
-        startDate,
-        endDate,
-        createdAt: currentGoal?.createdAt || new Date()
-      };
-
-      onGoalSet(goal);
-      toast.success('Savings goal set successfully!');
-    } catch {
-      toast.error('Failed to set savings goal');
-    } finally {
-      setIsLoading(false);
+      if (currentGoal) {
+        updateSavingsGoal(currentGoal.id, data);
+        toast.success('Savings goal updated successfully!');
+      } else {
+        addSavingsGoal(data);
+        toast.success('Savings goal created successfully!');
+        reset({
+          title: '',
+          targetAmount: undefined,
+          currency: 'GHS',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to save goal. Please try again.');
     }
   };
 
@@ -81,7 +80,22 @@ export function SavingsGoalSetup({ onGoalSet, currentGoal }: SavingsGoalSetupPro
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Goal Title</label>
+            <Input
+              type="text"
+              placeholder="e.g., Emergency Fund, Vacation"
+              {...register('title')}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {errors.title.message}
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Target Amount (Optional)</label>
@@ -90,18 +104,23 @@ export function SavingsGoalSetup({ onGoalSet, currentGoal }: SavingsGoalSetupPro
                 <Input
                   type="number"
                   placeholder="0.00"
-                  value={targetAmount}
-                  onChange={(e) => setTargetAmount(e.target.value)}
                   className="pl-10"
                   step="0.01"
                   min="0"
+                  {...register('targetAmount', { valueAsNumber: true })}
                 />
               </div>
+              {errors.targetAmount && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.targetAmount.message}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
               <label className="text-sm font-medium">Currency</label>
-              <Select value={currency} onValueChange={(value: SupportedCurrency) => setCurrency(value)}>
+              <Select value={currency} onValueChange={(value) => setValue('currency', value as any)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -133,7 +152,7 @@ export function SavingsGoalSetup({ onGoalSet, currentGoal }: SavingsGoalSetupPro
                   <CalendarComponent
                     mode="single"
                     selected={startDate}
-                    onSelect={setStartDate}
+                    onSelect={(date) => date && setValue('startDate', date)}
                     initialFocus
                   />
                 </PopoverContent>
@@ -156,23 +175,49 @@ export function SavingsGoalSetup({ onGoalSet, currentGoal }: SavingsGoalSetupPro
                   <CalendarComponent
                     mode="single"
                     selected={endDate}
-                    onSelect={setEndDate}
+                    onSelect={(date) => date && setValue('endDate', date)}
                     initialFocus
                     disabled={(date) => date <= (startDate || new Date())}
                   />
                 </PopoverContent>
               </Popover>
+              {errors.endDate && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.endDate.message}
+                </p>
+              )}
             </div>
           </div>
 
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isLoading || !startDate || !endDate}
+            disabled={isSubmitting}
           >
-            {isLoading ? 'Setting Goal...' : (isEditing ? 'Update Goal' : 'Set Goal')}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isEditing ? 'Updating...' : 'Setting Goal...'}
+              </>
+            ) : (
+              isEditing ? 'Update Goal' : 'Set Goal'
+            )}
           </Button>
         </form>
+        
+        {currentGoal && (
+          <div className="mt-4 pt-4 border-t">
+            <h4 className="font-semibold mb-2">Current Goal</h4>
+            <div className="space-y-1 text-sm text-gray-600">
+              <p className="font-medium">{currentGoal.title}</p>
+              {currentGoal.targetAmount && (
+                <p>Target: {formatGHS(currentGoal.targetAmount)}</p>
+              )}
+              <p>Period: {format(currentGoal.startDate, 'MMM dd, yyyy')} - {format(currentGoal.endDate, 'MMM dd, yyyy')}</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

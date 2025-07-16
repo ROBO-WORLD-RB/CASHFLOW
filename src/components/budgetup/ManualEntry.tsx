@@ -1,94 +1,166 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, DollarSign } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, DollarSign, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatGHS } from '@/lib/currencyUtils';
+import { createTransactionSchema, CreateTransactionFormData } from '@/lib/validations';
+import { useFinancialStore } from '@/store/useFinancialStore';
+import { toast } from 'sonner';
 
 interface ManualEntryProps {
   type: 'income' | 'expense';
-  onUpdate: (amount: number, description: string) => void;
-  total: number;
 }
 
-export function ManualEntry({ type, onUpdate, total }: ManualEntryProps) {
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const INCOME_CATEGORIES = [
+  'Salary',
+  'Freelance',
+  'Business',
+  'Investment',
+  'Gift',
+  'Other Income'
+];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!amount || !description) {
-      return;
+const EXPENSE_CATEGORIES = [
+  'Food & Dining',
+  'Transportation',
+  'Housing & Rent',
+  'Utilities',
+  'Healthcare',
+  'Entertainment',
+  'Shopping',
+  'Education',
+  'Communication',
+  'Other Expenses'
+];
+
+export function ManualEntry({ type }: ManualEntryProps) {
+  const { addTransaction, getTotalIncome, getTotalExpenses } = useFinancialStore();
+  
+  const total = type === 'income' ? getTotalIncome() : getTotalExpenses();
+  const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting }
+  } = useForm<CreateTransactionFormData>({
+    resolver: zodResolver(createTransactionSchema),
+    defaultValues: {
+      type,
+      currency: 'GHS',
+      date: new Date()
     }
+  });
 
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      return;
-    }
-
-    setIsLoading(true);
-    
+  const onSubmit = async (data: CreateTransactionFormData) => {
     try {
-      onUpdate(numAmount, description);
-      setAmount('');
-      setDescription('');
-    } finally {
-      setIsLoading(false);
+      addTransaction(data);
+      toast.success(`${type === 'income' ? 'Income' : 'Expense'} added successfully!`);
+      reset({
+        type,
+        currency: 'GHS',
+        date: new Date()
+      });
+    } catch (error) {
+      toast.error('Failed to add transaction. Please try again.');
     }
   };
 
   const isIncome = type === 'income';
-  const title = isIncome ? 'Income (GHS)' : 'Expenses (GHS)';
-  const buttonText = isIncome ? 'Add Income' : 'Add Expense';
-  const buttonColor = isIncome ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
-  const totalColor = isIncome ? 'text-green-600' : 'text-red-600';
+  const icon = isIncome ? TrendingUp : TrendingDown;
+  const IconComponent = icon;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className={totalColor}>{title}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <IconComponent className={`h-5 w-5 ${isIncome ? 'text-green-600' : 'text-red-600'}`} />
+          {isIncome ? 'Add Income' : 'Add Expense'}
+        </CardTitle>
+        <CardDescription>
+          Current total: <span className="font-semibold">{formatGHS(total)}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              type="number"
-              placeholder="Amount (GHS)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="pl-10"
-              step="0.01"
-              min="0"
-              required
-            />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                type="number"
+                placeholder="Amount (GHS)"
+                step="0.01"
+                min="0"
+                className="pl-10"
+                {...register('amount', { valueAsNumber: true })}
+              />
+            </div>
+            {errors.amount && (
+              <p className="text-sm text-red-600">{errors.amount.message}</p>
+            )}
           </div>
-          <Input
-            type="text"
-            placeholder={`${isIncome ? 'Income' : 'Expense'} description`}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-          />
-          <Button 
-            type="submit" 
-            className={`w-full ${buttonColor}`}
-            disabled={isLoading || !amount || !description}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {isLoading ? 'Adding...' : buttonText}
+          
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder="Description"
+              {...register('description')}
+            />
+            {errors.description && (
+              <p className="text-sm text-red-600">{errors.description.message}</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Select onValueChange={(value) => setValue('category', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && (
+              <p className="text-sm text-red-600">{errors.category.message}</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Input
+              type="date"
+              {...register('date', { valueAsDate: true })}
+            />
+            {errors.date && (
+              <p className="text-sm text-red-600">{errors.date.message}</p>
+            )}
+          </div>
+          
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Add {isIncome ? 'Income' : 'Expense'}
+              </>
+            )}
           </Button>
         </form>
-        
-        <div className="mt-4 pt-4 border-t">
-          <p className="text-lg font-semibold">
-            Total {isIncome ? 'Income' : 'Expenses'}: {formatGHS(total)}
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

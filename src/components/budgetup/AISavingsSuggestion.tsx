@@ -1,91 +1,142 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Send, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Brain, Send, Loader2, TrendingUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { suggestSavings } from '@/ai/flows/suggest-savings';
 import { formatGHS } from '@/lib/currencyUtils';
 import { toast } from 'sonner';
+import { useFinancialStore } from '@/store/useFinancialStore';
+import { aiQuerySchema, AIQueryFormData } from '@/lib/validations';
+import { withErrorHandling } from '@/lib/error-handler';
 
-interface AISavingsSuggestionProps {
-  userId: string;
-}
+export function AISavingsSuggestion() {
+  const { user, getTotalIncome, getTotalExpenses, getTransactionsByCategory } = useFinancialStore();
+  
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting }
+  } = useForm<AIQueryFormData>({
+    resolver: zodResolver(aiQuerySchema),
+    defaultValues: {
+      userId: user?.id || ''
+    }
+  });
 
-export function AISavingsSuggestion({ userId }: AISavingsSuggestionProps) {
-  const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<{
     suggestedSavingsGHS: number;
     savingsRationale: string;
   } | null>(null);
 
-  const handleGetAdvice = async () => {
-    if (!query.trim()) {
-      toast.error('Please enter your financial question');
+  const onSubmit = async (data: AIQueryFormData) => {
+    if (!user) {
+      toast.error('Please log in to get AI advice');
       return;
     }
 
-    setIsLoading(true);
-    setSuggestion(null);
-
-    try {
-      const result = await suggestSavings({
-        userId,
-        userQuery: query.trim()
+    const result = await withErrorHandling(async () => {
+      const response = await suggestSavings({
+        userId: user.id,
+        userQuery: data.query
       });
-
-      setSuggestion(result);
+      
+      setSuggestion(response);
       toast.success('AI advice generated successfully!');
-    } catch (error) {
-      console.error('Error getting AI advice:', error);
-      toast.error('Failed to get AI advice. Please try again.');
-    } finally {
-      setIsLoading(false);
+      return response;
+    }, 'AI Savings Suggestion');
+
+    if (!result) {
+      setSuggestion(null);
     }
   };
 
+  // Show user's current financial summary
+  const totalIncome = getTotalIncome();
+  const totalExpenses = getTotalExpenses();
+  const availableBalance = totalIncome - totalExpenses;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-blue-600" />
-          AI Financial Advisor
-        </CardTitle>
-        <CardDescription>
-          Get personalized savings advice based on your spending patterns and local Ghanaian costs
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Ask your financial question:</label>
-          <Textarea
-            placeholder="e.g., I earn 5000 GHS a month and spend a lot on data, how can I save more?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="min-h-[100px]"
-            disabled={isLoading}
-          />
-        </div>
-        
-        <Button 
-          onClick={handleGetAdvice}
-          disabled={isLoading || !query.trim()}
-          className="w-full"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Getting Advice...
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4 mr-2" />
-              Get Savings Advice
-            </>
-          )}
-        </Button>
+    <div className="space-y-6">
+      {/* Financial Summary Card */}
+      <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-700">
+            <TrendingUp className="h-5 w-5" />
+            Your Financial Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-sm text-gray-600">Income</p>
+              <p className="text-lg font-bold text-green-600">{formatGHS(totalIncome)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Expenses</p>
+              <p className="text-lg font-bold text-red-600">{formatGHS(totalExpenses)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Available</p>
+              <p className={`text-lg font-bold ${availableBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                {formatGHS(availableBalance)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Advisor Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-blue-600" />
+            AI Financial Advisor
+          </CardTitle>
+          <CardDescription>
+            Get personalized savings advice based on your spending patterns and local Ghanaian costs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ask your financial question:</label>
+              <Textarea
+                placeholder="e.g., I earn 5000 GHS a month and spend a lot on data, how can I save more?"
+                className="min-h-[100px]"
+                {...register('query')}
+              />
+              {errors.query && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.query.message}
+                </p>
+              )}
+            </div>
+            
+            <Button 
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Getting Advice...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Get Savings Advice
+                </>
+              )}
+            </Button>
+          </form>
 
         {suggestion && (
           <div className="mt-6 space-y-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">

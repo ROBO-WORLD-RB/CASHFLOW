@@ -1,75 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wallet, Mail, Lock, User } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Wallet, Mail, Lock, User, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { loginSchema, signupSchema, LoginFormData, SignupFormData } from '@/lib/validations';
 
 export default function AuthPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, isLoading: authLoading, login, signup } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // Login form
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+  // Signup form
+  const signupForm = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+  });
 
-    // Simulated login validation
-    if (email && password) {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Store authentication state
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', email);
-      
-      toast.success('Login successful!');
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      router.push('/');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  const handleLogin = async (data: LoginFormData) => {
+    const result = await login(data.email, data.password);
+    if (result.success) {
       router.push('/');
     } else {
-      toast.error('Please fill in all fields');
+      toast.error(result.error || 'Login failed');
     }
-    
-    setIsLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const fullName = formData.get('fullName') as string;
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    // Simulated signup validation
-    if (fullName && email && password && password.length >= 6) {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Store authentication state
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('userName', fullName);
-      
-      toast.success('Account created successfully!');
+  const handleSignUp = async (data: SignupFormData) => {
+    const result = await signup(data.email, data.password, data.name);
+    if (result.success) {
       router.push('/');
     } else {
-      if (password.length < 6) {
-        toast.error('Password must be at least 6 characters long');
-      } else {
-        toast.error('Please fill in all fields');
-      }
+      toast.error(result.error || 'Signup failed');
     }
-    
-    setIsLoading(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
@@ -99,78 +91,116 @@ export default function AuthPage() {
               </TabsList>
               
               <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                   <div className="space-y-2">
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        name="email"
                         type="email"
                         placeholder="Email"
                         className="pl-10"
-                        required
+                        {...loginForm.register('email')}
                       />
                     </div>
+                    {loginForm.formState.errors.email && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {loginForm.formState.errors.email.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        name="password"
                         type="password"
                         placeholder="Password"
                         className="pl-10"
-                        required
+                        {...loginForm.register('password')}
                       />
                     </div>
+                    {loginForm.formState.errors.password && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {loginForm.formState.errors.password.message}
+                      </p>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Signing in...' : 'Sign In'}
+                  <Button type="submit" className="w-full" disabled={loginForm.formState.isSubmitting}>
+                    {loginForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Sign In'
+                    )}
                   </Button>
                 </form>
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-4">
-                <form onSubmit={handleSignUp} className="space-y-4">
+                <form onSubmit={signupForm.handleSubmit(handleSignUp)} className="space-y-4">
                   <div className="space-y-2">
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        name="fullName"
                         type="text"
                         placeholder="Full Name"
                         className="pl-10"
-                        required
+                        {...signupForm.register('name')}
                       />
                     </div>
+                    {signupForm.formState.errors.name && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {signupForm.formState.errors.name.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        name="email"
                         type="email"
                         placeholder="Email"
                         className="pl-10"
-                        required
+                        {...signupForm.register('email')}
                       />
                     </div>
+                    {signupForm.formState.errors.email && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {signupForm.formState.errors.email.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        name="password"
                         type="password"
                         placeholder="Password (min 6 characters)"
                         className="pl-10"
-                        required
-                        minLength={6}
+                        {...signupForm.register('password')}
                       />
                     </div>
+                    {signupForm.formState.errors.password && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {signupForm.formState.errors.password.message}
+                      </p>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  <Button type="submit" className="w-full" disabled={signupForm.formState.isSubmitting}>
+                    {signupForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      'Create Account'
+                    )}
                   </Button>
                 </form>
               </TabsContent>

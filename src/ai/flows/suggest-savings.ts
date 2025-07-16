@@ -23,9 +23,33 @@ export async function suggestSavings(input: SuggestSavingsInput): Promise<Sugges
       throw new Error('GOOGLE_AI_API_KEY is not configured');
     }
 
-    // For now, let's use mock data to test the AI functionality
-    const mockSpendingSummary = "Total income: GHS 5000.00. Total expenses: GHS 3500.00. Spending by category: Food: GHS 800.00, Transport: GHS 600.00, Data: GHS 300.00, Other: GHS 1800.00";
-    const mockLocalCosts = "Average monthly costs in Ghana: Food: GHS 800, Transport: GHS 500, Utilities: GHS 200, Data: GHS 250";
+    // Get real user data from services
+    const [spendingSummary, localCosts] = await Promise.all([
+      getMobileMoneyTransactions(),
+      getAverageLocalCosts()
+    ]);
+
+    // Format spending summary
+    const totalIncome = spendingSummary
+      .filter(t => t.type === 'credit')
+      .reduce((sum, t) => sum + t.amountGHS, 0);
+    
+    const totalExpenses = spendingSummary
+      .filter(t => t.type === 'debit')
+      .reduce((sum, t) => sum + t.amountGHS, 0);
+
+    // Group expenses by category
+    const expensesByCategory = spendingSummary
+      .filter(t => t.type === 'debit')
+      .reduce((acc, t) => {
+        const category = t.category || 'Other';
+        acc[category] = (acc[category] || 0) + t.amountGHS;
+        return acc;
+      }, {} as Record<string, number>);
+
+    const spendingSummaryText = `Total income: GHS ${totalIncome.toFixed(2)}. Total expenses: GHS ${totalExpenses.toFixed(2)}. Spending by category: ${Object.entries(expensesByCategory).map(([cat, amount]) => `${cat}: GHS ${amount.toFixed(2)}`).join(', ')}`;
+    
+    const localCostsText = `Average monthly costs in Ghana: ${localCosts.map(cost => `${cost.category}: GHS ${cost.averageCostGHS}`).join(', ')}`;
 
     console.log('Calling AI with model: gemini-1.5-flash');
 
@@ -35,8 +59,8 @@ export async function suggestSavings(input: SuggestSavingsInput): Promise<Sugges
       prompt: `You are a friendly personal finance advisor for Ghana. 
 
 User Query: ${input.userQuery}
-User's Spending Summary: ${mockSpendingSummary}
-Local Costs Context: ${mockLocalCosts}
+User's Spending Summary: ${spendingSummaryText}
+Local Costs Context: ${localCostsText}
 
 Provide savings advice in this exact format:
 SUGGESTED_SAVINGS: [number in GHS]

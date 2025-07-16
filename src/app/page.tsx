@@ -31,8 +31,27 @@ export default function DashboardPage() {
     savingsGoals,
     savingsEntries,
     groupGoals,
-    groupContributions
+    groupContributions,
+    addGroupContribution,
+    addGroupGoal
   } = useFinancialStore();
+
+  // Handler for group contributions
+  const handleGroupContributionAdd = (groupId: string, contribution: any) => {
+    addGroupContribution({
+      ...contribution,
+      groupId
+    });
+  };
+
+  // Handler for creating group goals
+  const handleGroupGoalCreate = (goal: any) => {
+    addGroupGoal({
+      ...goal,
+      createdBy: user?.id || 'anonymous',
+      isActive: true
+    });
+  };
 
   useEffect(() => {
     // The useAuth hook handles authentication checking
@@ -282,7 +301,10 @@ export default function DashboardPage() {
                 <SavingsEntryForm />
               </div>
               <div className="lg:col-span-2">
-                <SavingsTrackerTable />
+                <SavingsTrackerTable 
+                  savingsEntries={savingsEntries}
+                  savingsGoal={savingsGoals.length > 0 ? savingsGoals[0] : null}
+                />
               </div>
             </div>
           </TabsContent>
@@ -294,8 +316,12 @@ export default function DashboardPage() {
               <p className="text-gray-600">Collaborate with friends and family on shared financial goals</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <CreateGroupGoalForm />
-              <GroupSavingsTrackerTable />
+              <CreateGroupGoalForm onSubmit={handleGroupGoalCreate} />
+              <GroupSavingsTrackerTable 
+                groupGoals={groupGoals}
+                groupContributions={groupContributions}
+                onAddContribution={handleGroupContributionAdd}
+              />
             </div>
           </TabsContent>
 

@@ -15,12 +15,11 @@ import { aiQuerySchema, AIQueryFormData } from '@/lib/validations';
 import { withErrorHandling } from '@/lib/error-handler';
 
 export function AISavingsSuggestion() {
-  const { user, getTotalIncome, getTotalExpenses, getTransactionsByCategory } = useFinancialStore();
+  const { user, getTotalIncome, getTotalExpenses } = useFinancialStore();
   
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting }
   } = useForm<AIQueryFormData>({
     resolver: zodResolver(aiQuerySchema),
@@ -138,7 +137,7 @@ export function AISavingsSuggestion() {
             </Button>
           </form>
 
-        {suggestion && (
+          {suggestion && (
           <div className="mt-6 space-y-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
             <div className="text-center space-y-2 pb-4 border-b border-blue-200">
               <h4 className="font-semibold text-blue-800 text-lg">💰 Suggested Monthly Savings</h4>
@@ -197,8 +196,9 @@ export function AISavingsSuggestion() {
               </div>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 } 

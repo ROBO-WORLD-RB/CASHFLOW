@@ -16,7 +16,7 @@ import { BudgetTable } from '@/components/budgetup/BudgetTable';
 import { VisualReport } from '@/components/budgetup/VisualReport';
 import { SavingsEntryForm } from '@/components/budgetup/SavingsEntryForm';
 import { TransactionHistory } from '@/components/budgetup/TransactionHistory';
-import { formatGHS, SupportedCurrency } from '@/lib/currencyUtils';
+import { formatGHS } from '@/lib/currencyUtils';
 import { useFinancialStore } from '@/store/useFinancialStore';
 
 export default function DashboardPage() {

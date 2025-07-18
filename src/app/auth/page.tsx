@@ -30,9 +30,9 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push('/');
+      window.location.href = '/';
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading]);
 
   const handleLogin = async (data: LoginFormData) => {
     const result = await login(data.email, data.password);

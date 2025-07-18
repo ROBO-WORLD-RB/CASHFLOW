@@ -40,7 +40,7 @@ const EXPENSE_CATEGORIES = [
 
 export function ManualEntry({ type }: ManualEntryProps) {
   const { addTransaction, getTotalIncome, getTotalExpenses } = useFinancialStore();
-  
+
   const total = type === 'income' ? getTotalIncome() : getTotalExpenses();
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -49,7 +49,6 @@ export function ManualEntry({ type }: ManualEntryProps) {
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors, isSubmitting }
   } = useForm<CreateTransactionFormData>({
     resolver: zodResolver(createTransactionSchema),
@@ -107,7 +106,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
               <p className="text-sm text-red-600">{errors.amount.message}</p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Input
               type="text"
@@ -118,7 +117,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
               <p className="text-sm text-red-600">{errors.description.message}</p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Select onValueChange={(value) => setValue('category', value)}>
               <SelectTrigger>
@@ -136,7 +135,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
               <p className="text-sm text-red-600">{errors.category.message}</p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Input
               type="date"
@@ -146,7 +145,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
               <p className="text-sm text-red-600">{errors.date.message}</p>
             )}
           </div>
-          
+
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <>

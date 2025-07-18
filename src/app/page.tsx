@@ -1,9 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Wallet, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Wallet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ManualEntry } from '@/components/budgetup/ManualEntry';
@@ -20,8 +17,6 @@ import { formatGHS } from '@/lib/currencyUtils';
 import { useFinancialStore } from '@/store/useFinancialStore';
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
-  
   // Use financial store
   const { 
     getTotalIncome, 
@@ -56,38 +51,6 @@ export default function DashboardPage() {
     console.log('Savings update:', { amount, description, currency });
   };
 
-  useEffect(() => {
-    // Redirect to auth if not authenticated and not loading
-    if (!isLoading && !isAuthenticated) {
-      window.location.href = '/auth';
-    }
-  }, [isLoading, isAuthenticated]);
-
-  // Loading state with timeout
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-          <p className="mt-2 text-sm text-gray-500">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated, show redirect message
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to login...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
       {/* Modern Header */}
@@ -107,18 +70,9 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-6">
               <div className="hidden sm:block text-right">
-                <p className="text-sm text-gray-500">Welcome back,</p>
-                <p className="font-semibold text-gray-800">{user?.name || 'User'}</p>
+                <p className="text-sm text-gray-500">Welcome to</p>
+                <p className="font-semibold text-gray-800">BudgetUp</p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={logout}
-                className="flex items-center space-x-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </Button>
             </div>
           </div>
         </div>

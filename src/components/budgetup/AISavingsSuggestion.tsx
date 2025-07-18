@@ -15,7 +15,7 @@ import { aiQuerySchema, AIQueryFormData } from '@/lib/validations';
 import { withErrorHandling } from '@/lib/error-handler';
 
 export function AISavingsSuggestion() {
-  const { user, getTotalIncome, getTotalExpenses } = useFinancialStore();
+  const { getTotalIncome, getTotalExpenses } = useFinancialStore();
   
   const {
     register,
@@ -24,7 +24,7 @@ export function AISavingsSuggestion() {
   } = useForm<AIQueryFormData>({
     resolver: zodResolver(aiQuerySchema),
     defaultValues: {
-      userId: user?.id || ''
+      userId: 'demo-user'
     }
   });
 
@@ -34,14 +34,9 @@ export function AISavingsSuggestion() {
   } | null>(null);
 
   const onSubmit = async (data: AIQueryFormData) => {
-    if (!user) {
-      toast.error('Please log in to get AI advice');
-      return;
-    }
-
     const result = await withErrorHandling(async () => {
       const response = await suggestSavings({
-        userId: user.id,
+        userId: 'demo-user',
         userQuery: data.query
       });
       

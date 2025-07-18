@@ -3,59 +3,50 @@ import { persist } from 'zustand/middleware';
 import { Transaction, SavingsGoal, SavingsEntry, GroupGoal, GroupContribution, BudgetCategory, SupportedCurrency } from '@/types';
 
 interface FinancialState {
-  // User data
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  } | null;
-  
   // Transactions
   transactions: Transaction[];
-  
+
   // Savings
   savingsGoals: SavingsGoal[];
   savingsEntries: SavingsEntry[];
-  
+
   // Group savings
   groupGoals: GroupGoal[];
   groupContributions: GroupContribution[];
-  
+
   // Budget
   budgetCategories: BudgetCategory[];
-  
+
   // Actions
-  setUser: (user: FinancialState['user']) => void;
-  clearUser: () => void;
-  
+
   // Transaction actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
-  
+
   // Savings actions
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
   updateSavingsGoal: (id: string, updates: Partial<SavingsGoal>) => void;
   deleteSavingsGoal: (id: string) => void;
-  
+
   addSavingsEntry: (entry: Omit<SavingsEntry, 'id' | 'userId' | 'createdAt'>) => void;
   updateSavingsEntry: (id: string, updates: Partial<SavingsEntry>) => void;
   deleteSavingsEntry: (id: string) => void;
-  
+
   // Group savings actions
   addGroupGoal: (goal: Omit<GroupGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateGroupGoal: (id: string, updates: Partial<GroupGoal>) => void;
   deleteGroupGoal: (id: string) => void;
-  
+
   addGroupContribution: (contribution: Omit<GroupContribution, 'id' | 'createdAt'>) => void;
   updateGroupContribution: (id: string, updates: Partial<GroupContribution>) => void;
   deleteGroupContribution: (id: string) => void;
-  
+
   // Budget actions
   addBudgetCategory: (category: Omit<BudgetCategory, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
   updateBudgetCategory: (id: string, updates: Partial<BudgetCategory>) => void;
   deleteBudgetCategory: (id: string) => void;
-  
+
   // Computed values
   getTotalIncome: () => number;
   getTotalExpenses: () => number;
@@ -72,82 +63,65 @@ export const useFinancialStore = create<FinancialState>()(
   persist(
     (set, get) => ({
       // Initial state
-      user: null,
       transactions: [],
       savingsGoals: [],
       savingsEntries: [],
       groupGoals: [],
       groupContributions: [],
       budgetCategories: [],
-      
-      // User actions
-      setUser: (user) => set({ user }),
-      clearUser: () => set({ 
-        user: null,
-        transactions: [],
-        savingsGoals: [],
-        savingsEntries: [],
-        groupGoals: [],
-        groupContributions: [],
-        budgetCategories: []
-      }),
-      
+
       // Transaction actions
       addTransaction: (transactionData) => {
-        const state = get();
-        if (!state.user) return;
-        
         const transaction: Transaction = {
           ...transactionData,
           id: generateId(),
-          userId: state.user.id,
+          userId: 'demo-user',
           createdAt: new Date()
         };
-        
+
+        const state = get();
         set({ transactions: [...state.transactions, transaction] });
       },
-      
+
       updateTransaction: (id, updates) => {
         const state = get();
         set({
-          transactions: state.transactions.map(t => 
+          transactions: state.transactions.map(t =>
             t.id === id ? { ...t, ...updates } : t
           )
         });
       },
-      
+
       deleteTransaction: (id) => {
         const state = get();
         set({
           transactions: state.transactions.filter(t => t.id !== id)
         });
       },
-      
+
       // Savings goal actions
       addSavingsGoal: (goalData) => {
-        const state = get();
-        if (!state.user) return;
-        
         const goal: SavingsGoal = {
           ...goalData,
           id: generateId(),
-          userId: state.user.id,
+          userId: 'demo-user',
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
+
+        const state = get();
         set({ savingsGoals: [...state.savingsGoals, goal] });
       },
-      
+
       updateSavingsGoal: (id, updates) => {
         const state = get();
         set({
-          savingsGoals: state.savingsGoals.map(g => 
+          savingsGoals: state.savingsGoals.map(g =>
             g.id === id ? { ...g, ...updates, updatedAt: new Date() } : g
           )
         });
       },
-      
+
       deleteSavingsGoal: (id) => {
         const state = get();
         set({
@@ -155,38 +129,36 @@ export const useFinancialStore = create<FinancialState>()(
           savingsEntries: state.savingsEntries.filter(e => e.goalId !== id)
         });
       },
-      
+
       // Savings entry actions
       addSavingsEntry: (entryData) => {
-        const state = get();
-        if (!state.user) return;
-        
         const entry: SavingsEntry = {
           ...entryData,
           id: generateId(),
-          userId: state.user.id,
+          userId: 'demo-user',
           createdAt: new Date()
         };
-        
+
+        const state = get();
         set({ savingsEntries: [...state.savingsEntries, entry] });
       },
-      
+
       updateSavingsEntry: (id, updates) => {
         const state = get();
         set({
-          savingsEntries: state.savingsEntries.map(e => 
+          savingsEntries: state.savingsEntries.map(e =>
             e.id === id ? { ...e, ...updates } : e
           )
         });
       },
-      
+
       deleteSavingsEntry: (id) => {
         const state = get();
         set({
           savingsEntries: state.savingsEntries.filter(e => e.id !== id)
         });
       },
-      
+
       // Group goal actions
       addGroupGoal: (goalData) => {
         const goal: GroupGoal = {
@@ -195,20 +167,20 @@ export const useFinancialStore = create<FinancialState>()(
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
+
         const state = get();
         set({ groupGoals: [...state.groupGoals, goal] });
       },
-      
+
       updateGroupGoal: (id, updates) => {
         const state = get();
         set({
-          groupGoals: state.groupGoals.map(g => 
+          groupGoals: state.groupGoals.map(g =>
             g.id === id ? { ...g, ...updates, updatedAt: new Date() } : g
           )
         });
       },
-      
+
       deleteGroupGoal: (id) => {
         const state = get();
         set({
@@ -216,7 +188,7 @@ export const useFinancialStore = create<FinancialState>()(
           groupContributions: state.groupContributions.filter(c => c.groupId !== id)
         });
       },
-      
+
       // Group contribution actions
       addGroupContribution: (contributionData) => {
         const contribution: GroupContribution = {
@@ -224,59 +196,57 @@ export const useFinancialStore = create<FinancialState>()(
           id: generateId(),
           createdAt: new Date()
         };
-        
+
         const state = get();
         set({ groupContributions: [...state.groupContributions, contribution] });
       },
-      
+
       updateGroupContribution: (id, updates) => {
         const state = get();
         set({
-          groupContributions: state.groupContributions.map(c => 
+          groupContributions: state.groupContributions.map(c =>
             c.id === id ? { ...c, ...updates } : c
           )
         });
       },
-      
+
       deleteGroupContribution: (id) => {
         const state = get();
         set({
           groupContributions: state.groupContributions.filter(c => c.id !== id)
         });
       },
-      
+
       // Budget actions
       addBudgetCategory: (categoryData) => {
-        const state = get();
-        if (!state.user) return;
-        
         const category: BudgetCategory = {
           ...categoryData,
           id: generateId(),
-          userId: state.user.id,
+          userId: 'demo-user',
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
+
+        const state = get();
         set({ budgetCategories: [...state.budgetCategories, category] });
       },
-      
+
       updateBudgetCategory: (id, updates) => {
         const state = get();
         set({
-          budgetCategories: state.budgetCategories.map(c => 
+          budgetCategories: state.budgetCategories.map(c =>
             c.id === id ? { ...c, ...updates, updatedAt: new Date() } : c
           )
         });
       },
-      
+
       deleteBudgetCategory: (id) => {
         const state = get();
         set({
           budgetCategories: state.budgetCategories.filter(c => c.id !== id)
         });
       },
-      
+
       // Computed values
       getTotalIncome: () => {
         const state = get();
@@ -284,24 +254,24 @@ export const useFinancialStore = create<FinancialState>()(
           .filter(t => t.type === 'income')
           .reduce((sum, t) => sum + t.amount, 0);
       },
-      
+
       getTotalExpenses: () => {
         const state = get();
         return state.transactions
           .filter(t => t.type === 'expense')
           .reduce((sum, t) => sum + t.amount, 0);
       },
-      
+
       getAvailableBalance: () => {
         const state = get();
         return state.getTotalIncome() - state.getTotalExpenses();
       },
-      
+
       getTotalSavings: () => {
         const state = get();
         return state.savingsEntries.reduce((sum, e) => sum + e.amount, 0);
       },
-      
+
       getTransactionsByCategory: () => {
         const state = get();
         return state.transactions.reduce((acc, transaction) => {
@@ -313,28 +283,28 @@ export const useFinancialStore = create<FinancialState>()(
           return acc;
         }, {} as Record<string, Transaction[]>);
       },
-      
+
       getSavingsProgress: (goalId: string) => {
         const state = get();
         const goal = state.savingsGoals.find(g => g.id === goalId);
         if (!goal || !goal.targetAmount) return 0;
-        
+
         const totalSaved = state.savingsEntries
           .filter(e => e.goalId === goalId)
           .reduce((sum, e) => sum + e.amount, 0);
-        
+
         return Math.min((totalSaved / goal.targetAmount) * 100, 100);
       },
-      
+
       getGroupSavingsProgress: (groupId: string) => {
         const state = get();
         const goal = state.groupGoals.find(g => g.id === groupId);
         if (!goal) return 0;
-        
+
         const totalContributed = state.groupContributions
           .filter(c => c.groupId === groupId)
           .reduce((sum, c) => sum + c.amount, 0);
-        
+
         return Math.min((totalContributed / goal.targetAmount) * 100, 100);
       }
     }),

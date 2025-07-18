@@ -41,10 +41,10 @@ export const transactionSchema = z.object({
 export const createTransactionSchema = z.object({
   type: transactionTypeSchema,
   amount: z.number().positive('Amount must be positive'),
-  currency: currencySchema.default('GHS'),
+  currency: currencySchema.optional().default('GHS'),
   description: z.string().min(1, 'Description is required'),
   category: z.string().min(1, 'Category is required'),
-  date: z.date().default(() => new Date()),
+  date: z.date().optional().default(() => new Date()),
 });
 
 // Savings schemas
@@ -67,10 +67,10 @@ export const savingsGoalSchema = z.object({
 export const createSavingsGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   targetAmount: z.number().positive('Target amount must be positive').optional(),
-  currency: currencySchema.default('GHS'),
-  startDate: z.date().default(() => new Date()),
+  currency: currencySchema,
+  startDate: z.date(),
   endDate: z.date(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 }).refine(data => data.endDate > data.startDate, {
   message: 'End date must be after start date',
   path: ['endDate'],

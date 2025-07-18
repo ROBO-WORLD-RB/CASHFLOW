@@ -16,7 +16,7 @@ export interface SuggestSavingsOutput {
 
 export async function suggestSavings(input: SuggestSavingsInput): Promise<SuggestSavingsOutput> {
   try {
-    console.log('Starting suggestSavings with input:', input);
+
 
     // Check if API key is available
     if (!process.env.GOOGLE_AI_API_KEY) {
@@ -33,7 +33,7 @@ export async function suggestSavings(input: SuggestSavingsInput): Promise<Sugges
     const totalIncome = spendingSummary
       .filter(t => t.type === 'credit')
       .reduce((sum, t) => sum + t.amountGHS, 0);
-    
+
     const totalExpenses = spendingSummary
       .filter(t => t.type === 'debit')
       .reduce((sum, t) => sum + t.amountGHS, 0);
@@ -48,10 +48,8 @@ export async function suggestSavings(input: SuggestSavingsInput): Promise<Sugges
       }, {} as Record<string, number>);
 
     const spendingSummaryText = `Total income: GHS ${totalIncome.toFixed(2)}. Total expenses: GHS ${totalExpenses.toFixed(2)}. Spending by category: ${Object.entries(expensesByCategory).map(([cat, amount]) => `${cat}: GHS ${amount.toFixed(2)}`).join(', ')}`;
-    
-    const localCostsText = `Average monthly costs in Ghana: ${localCosts.map(cost => `${cost.category}: GHS ${cost.averageCostGHS}`).join(', ')}`;
 
-    console.log('Calling AI with model: gemini-1.5-flash');
+    const localCostsText = `Average monthly costs in Ghana: ${localCosts.map(cost => `${cost.category}: GHS ${cost.averageCostGHS}`).join(', ')}`;
 
     // Generate AI response
     const result = await ai.generate({
@@ -75,8 +73,6 @@ RATIONALE:
 Be practical, encouraging, and consider Ghanaian economic context. Use bullet points for clarity and avoid markdown formatting like ** or ##.`
     });
 
-    console.log('AI response received:', result.text);
-
     const response = result.text;
 
     // Parse the response
@@ -85,8 +81,6 @@ Be practical, encouraging, and consider Ghanaian economic context. Use bullet po
 
     const suggestedSavingsGHS = suggestedMatch ? parseFloat(suggestedMatch[1]) : 500;
     const savingsRationale = rationaleMatch ? rationaleMatch[1].trim() : response;
-
-    console.log('Parsed result:', { suggestedSavingsGHS, savingsRationale });
 
     return {
       suggestedSavingsGHS,

@@ -46,11 +46,14 @@ export default function DashboardPage() {
 
   // Handler for creating group goals
   const handleGroupGoalCreate = (goal: any) => {
-    addGroupGoal({
-      ...goal,
-      createdBy: user?.id || 'anonymous',
-      isActive: true
-    });
+    addGroupGoal(goal);
+  };
+
+  // Handler for savings updates
+  const handleSavingsUpdate = (amount: number, description: string, currency: string) => {
+    // This would typically add to the savings entries in the store
+    // For now, we'll just show a success message
+    console.log('Savings update:', { amount, description, currency });
   };
 
   useEffect(() => {
@@ -298,7 +301,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1 space-y-6">
                 <SavingsGoalSetup />
-                <SavingsEntryForm />
+                <SavingsEntryForm onUpdate={handleSavingsUpdate} />
               </div>
               <div className="lg:col-span-2">
                 <SavingsTrackerTable 
@@ -331,7 +334,7 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">📝 Budget Planner</h2>
               <p className="text-gray-600">Create and manage your monthly budget effectively</p>
             </div>
-            <BudgetTable />
+            <BudgetTable onBudgetUpdate={() => {}} />
           </TabsContent>
 
           {/* Reports Tab */}

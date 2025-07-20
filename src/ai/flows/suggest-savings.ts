@@ -7,70 +7,78 @@ import { getAverageLocalCosts } from '@/services/local-cost';
 export interface SuggestSavingsInput {
   userId: string;
   userQuery: string;
+  userCurrency?: string;
 }
 
 export interface SuggestSavingsOutput {
-  suggestedSavingsGHS: number;
+  suggestedSavings: number;
+  currency: string;
   savingsRationale: string;
 }
 
 export async function suggestSavings(input: SuggestSavingsInput): Promise<SuggestSavingsOutput> {
   try {
-
-
     // Check if API key is available
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('GOOGLE_AI_API_KEY is not configured');
     }
 
-    // Get real user data from services
-    const [spendingSummary, localCosts] = await Promise.all([
-      getMobileMoneyTransactions(),
-      getAverageLocalCosts()
-    ]);
+    // Detect currency from user query or use provided currency
+    const detectCurrencyFromQuery = (query: string): string => {
+      const currencyPatterns = [
+        { pattern: /\$(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'USD' },
+        { pattern: /€(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'EUR' },
+        { pattern: /£(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'GBP' },
+        { pattern: /₵(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'GHS' },
+        { pattern: /₦(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'NGN' },
+        { pattern: /₹(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'INR' },
+        { pattern: /¥(\d+(?:,\d{3})*(?:\.\d{2})?)/g, currency: 'JPY' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*USD)/gi, currency: 'USD' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*EUR)/gi, currency: 'EUR' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*GBP)/gi, currency: 'GBP' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*GHS)/gi, currency: 'GHS' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*NGN)/gi, currency: 'NGN' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*dollars?)/gi, currency: 'USD' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*euros?)/gi, currency: 'EUR' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*pounds?)/gi, currency: 'GBP' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*cedis?)/gi, currency: 'GHS' },
+        { pattern: /(\d+(?:,\d{3})*(?:\.\d{2})?\s*naira)/gi, currency: 'NGN' },
+      ];
 
-    // Format spending summary
-    const totalIncome = spendingSummary
-      .filter(t => t.type === 'credit')
-      .reduce((sum, t) => sum + t.amountGHS, 0);
+      for (const { pattern, currency } of currencyPatterns) {
+        if (pattern.test(query)) {
+          return currency;
+        }
+      }
+      
+      return input.userCurrency || 'USD'; // Default to provided currency or USD
+    };
 
-    const totalExpenses = spendingSummary
-      .filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amountGHS, 0);
+    const detectedCurrency = detectCurrencyFromQuery(input.userQuery);
 
-    // Group expenses by category
-    const expensesByCategory = spendingSummary
-      .filter(t => t.type === 'debit')
-      .reduce((acc, t) => {
-        const category = t.category || 'Other';
-        acc[category] = (acc[category] || 0) + t.amountGHS;
-        return acc;
-      }, {} as Record<string, number>);
-
-    const spendingSummaryText = `Total income: GHS ${totalIncome.toFixed(2)}. Total expenses: GHS ${totalExpenses.toFixed(2)}. Spending by category: ${Object.entries(expensesByCategory).map(([cat, amount]) => `${cat}: GHS ${amount.toFixed(2)}`).join(', ')}`;
-
-    const localCostsText = `Average monthly costs in Ghana: ${localCosts.map(cost => `${cost.category}: GHS ${cost.averageCostGHS}`).join(', ')}`;
-
-    // Generate AI response
+    // Generate AI response with currency awareness - removing GHS data to prevent confusion
     const result = await ai.generate({
       model: 'gemini-1.5-flash',
-      prompt: `You are a friendly personal finance advisor for Ghana. 
+      prompt: `You are a friendly global personal finance advisor specializing in ${detectedCurrency} financial planning.
+
+CRITICAL INSTRUCTION: The user's query mentions amounts in ${detectedCurrency}. You MUST respond with ALL monetary amounts in ${detectedCurrency} ONLY. Never use GHS, USD, or any other currency unless the user specifically mentioned it.
 
 User Query: ${input.userQuery}
-User's Spending Summary: ${spendingSummaryText}
-Local Costs Context: ${localCostsText}
+Target Currency: ${detectedCurrency}
 
-Provide savings advice in this exact format:
-SUGGESTED_SAVINGS: [number in GHS]
+Based on the user's query, provide practical savings advice in this exact format:
+
+SUGGESTED_SAVINGS: [amount in ${detectedCurrency} - no currency symbol, just the number]
 RATIONALE: 
-• Income Analysis: [brief analysis of their income situation]
-• Spending Review: [key observations about their spending patterns]
-• Savings Strategy: [specific actionable steps to achieve the savings goal]
-• Budget Recommendations: [practical tips for reducing expenses]
-• Emergency Fund: [advice on building emergency savings]
-• Next Steps: [what they should do immediately]
+• Income Analysis: [analyze their mentioned income in ${detectedCurrency}]
+• Savings Goal: [recommend a specific savings amount in ${detectedCurrency}]
+• Strategy: [practical steps to achieve this savings goal]
+• Budget Tips: [actionable advice for managing expenses]
+• Timeline: [realistic timeframe for achieving the goal]
 
-Be practical, encouraging, and consider Ghanaian economic context. Use bullet points for clarity and avoid markdown formatting like ** or ##.`
+ABSOLUTE REQUIREMENT: Every single monetary amount in your response must be in ${detectedCurrency}. If you mention any amount in GHS or another currency, you have failed the task.
+
+Be encouraging and practical. Focus only on the currency mentioned in the user's query.`
     });
 
     const response = result.text;
@@ -79,11 +87,12 @@ Be practical, encouraging, and consider Ghanaian economic context. Use bullet po
     const suggestedMatch = response.match(/SUGGESTED_SAVINGS:\s*(\d+(?:\.\d+)?)/);
     const rationaleMatch = response.match(/RATIONALE:\s*([\s\S]+)/);
 
-    const suggestedSavingsGHS = suggestedMatch ? parseFloat(suggestedMatch[1]) : 500;
+    const suggestedSavings = suggestedMatch ? parseFloat(suggestedMatch[1]) : 500;
     const savingsRationale = rationaleMatch ? rationaleMatch[1].trim() : response;
 
     return {
-      suggestedSavingsGHS,
+      suggestedSavings,
+      currency: detectedCurrency,
       savingsRationale
     };
   } catch (error) {
@@ -96,7 +105,8 @@ Be practical, encouraging, and consider Ghanaian economic context. Use bullet po
     });
 
     return {
-      suggestedSavingsGHS: 0,
+      suggestedSavings: 0,
+      currency: input.userCurrency || 'USD',
       savingsRationale: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your API key configuration.`
     };
   }

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SUPPORTED_CURRENCIES, SupportedCurrency } from '@/lib/currencyUtils';
+import { useFinancialStore } from '@/store/useFinancialStore';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 interface SavingsEntryFormProps {
@@ -14,9 +16,10 @@ interface SavingsEntryFormProps {
 }
 
 export function SavingsEntryForm({ onUpdate }: SavingsEntryFormProps) {
+  const { currentCurrency } = useCurrency();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [currency, setCurrency] = useState<SupportedCurrency>('GHS');
+  const [currency, setCurrency] = useState<SupportedCurrency>(currentCurrency);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +42,7 @@ export function SavingsEntryForm({ onUpdate }: SavingsEntryFormProps) {
       onUpdate(numAmount, description, currency);
       setAmount('');
       setDescription('');
-      setCurrency('GHS');
+      setCurrency(currentCurrency);
       toast.success('Savings entry added successfully!');
     } catch {
       toast.error('Failed to add savings entry');

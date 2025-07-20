@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, convertCurrency, SupportedCurrency } from '@/lib/currencyUtils';
+import { useFinancialStore } from '@/store/useFinancialStore';
 
 interface SavingsEntry {
   id: string;

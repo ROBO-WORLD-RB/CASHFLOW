@@ -1,6 +1,8 @@
 'use client';
 
-import { Wallet } from 'lucide-react';
+import { Wallet, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CurrencySelector } from '@/components/ui/currency-selector';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ManualEntry } from '@/components/budgetup/ManualEntry';
@@ -13,12 +15,16 @@ import { BudgetTable } from '@/components/budgetup/BudgetTable';
 import { VisualReport } from '@/components/budgetup/VisualReport';
 import { SavingsEntryForm } from '@/components/budgetup/SavingsEntryForm';
 import { TransactionHistory } from '@/components/budgetup/TransactionHistory';
-import { formatGHS } from '@/lib/currencyUtils';
+import { UserSetup } from '@/components/onboarding/UserSetup';
+import { ResetDataButton } from '@/components/ui/ResetDataButton';
+import { formatCurrency, SupportedCurrency } from '@/lib/currencyUtils';
 import { useFinancialStore } from '@/store/useFinancialStore';
 
 export default function DashboardPage() {
   // Use financial store
   const { 
+    userPreferences,
+    setUserPreferences,
     getTotalIncome, 
     getTotalExpenses, 
     getAvailableBalance,
@@ -30,6 +36,20 @@ export default function DashboardPage() {
     addGroupContribution,
     addGroupGoal
   } = useFinancialStore();
+
+  // Handle user setup completion
+  const handleUserSetupComplete = (userData: { name: string; currency: SupportedCurrency }) => {
+    setUserPreferences({
+      name: userData.name,
+      currency: userData.currency,
+      isSetupComplete: true
+    });
+  };
+
+  // Show onboarding if user hasn't completed setup
+  if (!userPreferences?.isSetupComplete) {
+    return <UserSetup onComplete={handleUserSetupComplete} />;
+  }
 
   // Handler for group contributions
   const handleGroupContributionAdd = (groupId: string, contribution: any) => {
@@ -51,6 +71,16 @@ export default function DashboardPage() {
     console.log('Savings update:', { amount, description, currency });
   };
 
+  // Handler for currency change
+  const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
+    if (userPreferences) {
+      setUserPreferences({
+        ...userPreferences,
+        currency: newCurrency
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
       {/* Modern Header */}
@@ -65,14 +95,20 @@ export default function DashboardPage() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">
                   BudgetUp
                 </h1>
-                <p className="text-sm text-gray-600 font-medium">Smart Financial Management for Ghana</p>
+                <p className="text-sm text-gray-600 font-medium">Global Financial Management Made Simple</p>
               </div>
             </div>
             <div className="flex items-center space-x-6">
               <div className="hidden sm:block text-right">
-                <p className="text-sm text-gray-500">Welcome to</p>
-                <p className="font-semibold text-gray-800">BudgetUp</p>
+                <p className="text-sm text-gray-500">Welcome back,</p>
+                <p className="font-semibold text-gray-800">{userPreferences.name}</p>
               </div>
+              <CurrencySelector 
+                selectedCurrency={userPreferences.currency}
+                onCurrencyChange={handleCurrencyChange}
+                className="hidden md:flex"
+              />
+              <ResetDataButton />
             </div>
           </div>
         </div>
@@ -94,7 +130,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(getTotalIncome())}</p>
+                <p className="text-4xl font-bold text-white">{formatCurrency(getTotalIncome(), userPreferences.currency)}</p>
                 <div className="flex items-center justify-between text-green-100 text-sm">
                   <span>{transactions.filter(t => t.type === 'income').length} entries</span>
                   <span className="bg-white/20 px-2 py-1 rounded-full">+{getTotalIncome() > 0 ? '100%' : '0%'}</span>
@@ -115,7 +151,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(getTotalExpenses())}</p>
+                <p className="text-4xl font-bold text-white">{formatCurrency(getTotalExpenses(), userPreferences.currency)}</p>
                 <div className="flex items-center justify-between text-red-100 text-sm">
                   <span>{transactions.filter(t => t.type === 'expense').length} entries</span>
                   <span className="bg-white/20 px-2 py-1 rounded-full">{getTotalIncome() > 0 ? Math.round((getTotalExpenses()/getTotalIncome())*100) : 0}% of income</span>
@@ -142,7 +178,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="space-y-2">
-                <p className="text-4xl font-bold text-white">{formatGHS(Math.abs(getAvailableBalance()))}</p>
+                <p className="text-4xl font-bold text-white">{formatCurrency(Math.abs(getAvailableBalance()), userPreferences.currency)}</p>
                 <div className={`flex items-center justify-between text-sm ${
                   getAvailableBalance() >= 0 ? 'text-blue-100' : 'text-orange-100'
                 }`}>
@@ -308,6 +344,7 @@ export default function DashboardPage() {
               savingsGoal={savingsGoals[0] || null}
               savingsEntries={savingsEntries}
               groupSavings={groupContributions}
+              userCurrency={userPreferences.currency}
             />
           </TabsContent>
         </Tabs>

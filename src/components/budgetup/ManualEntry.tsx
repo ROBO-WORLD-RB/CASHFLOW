@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatGHS } from '@/lib/currencyUtils';
 import { createTransactionSchema, CreateTransactionFormData } from '@/lib/validations';
 import { useFinancialStore } from '@/store/useFinancialStore';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 interface ManualEntryProps {
@@ -40,6 +40,7 @@ const EXPENSE_CATEGORIES = [
 
 export function ManualEntry({ type }: ManualEntryProps) {
   const { addTransaction, getTotalIncome, getTotalExpenses } = useFinancialStore();
+  const { currentCurrency, formatCurrency, getCurrencySymbol } = useCurrency();
 
   const total = type === 'income' ? getTotalIncome() : getTotalExpenses();
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -54,7 +55,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
     resolver: zodResolver(createTransactionSchema),
     defaultValues: {
       type,
-      currency: 'GHS',
+      currency: currentCurrency,
       date: new Date()
     }
   });
@@ -65,7 +66,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
       toast.success(`${type === 'income' ? 'Income' : 'Expense'} added successfully!`);
       reset({
         type,
-        currency: 'GHS',
+        currency: currentCurrency,
         date: new Date()
       });
     } catch (error) {
@@ -85,7 +86,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
           {isIncome ? 'Add Income' : 'Add Expense'}
         </CardTitle>
         <CardDescription>
-          Current total: <span className="font-semibold">{formatGHS(total)}</span>
+          Current total: <span className="font-semibold">{formatCurrency(total)}</span>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -95,7 +96,7 @@ export function ManualEntry({ type }: ManualEntryProps) {
               <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 type="number"
-                placeholder="Amount (GHS)"
+                placeholder={`Amount (${currentCurrency})`}
                 step="0.01"
                 min="0"
                 className="pl-10"

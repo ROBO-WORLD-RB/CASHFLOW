@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFinancialStore } from '@/store/useFinancialStore';
-import { formatGHS } from '@/lib/currencyUtils';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 export function TransactionHistory() {
   const { transactions, deleteTransaction, getTransactionsByCategory } = useFinancialStore();
+  const { formatCurrency, convertCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -43,13 +44,26 @@ export function TransactionHistory() {
     }
   };
 
-  const totalIncome = filteredTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // Calculate totals with currency conversion for historical transactions
+  const totalIncome = useMemo(() => {
+    return filteredTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => {
+        // Convert from transaction's original currency to user's current currency
+        const convertedAmount = convertCurrency(t.amount, t.currency);
+        return sum + convertedAmount;
+      }, 0);
+  }, [filteredTransactions, convertCurrency]);
 
-  const totalExpenses = filteredTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = useMemo(() => {
+    return filteredTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => {
+        // Convert from transaction's original currency to user's current currency
+        const convertedAmount = convertCurrency(t.amount, t.currency);
+        return sum + convertedAmount;
+      }, 0);
+  }, [filteredTransactions, convertCurrency]);
 
   return (
     <Card>
@@ -70,14 +84,14 @@ export function TransactionHistory() {
               <TrendingUp className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-700">Total Income</span>
             </div>
-            <p className="text-2xl font-bold text-green-600">{formatGHS(totalIncome)}</p>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</p>
           </div>
           <div className="bg-red-50 p-4 rounded-lg border border-red-200">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-600" />
               <span className="text-sm font-medium text-red-700">Total Expenses</span>
             </div>
-            <p className="text-2xl font-bold text-red-600">{formatGHS(totalExpenses)}</p>
+            <p className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
           </div>
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2">
@@ -179,7 +193,7 @@ export function TransactionHistory() {
                       <span className={`font-semibold ${
                         transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatGHS(transaction.amount)}
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, transaction.currency)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

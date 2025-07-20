@@ -1,3 +1,8 @@
+// Import from currency utils to maintain consistency
+import { SupportedCurrency as CurrencySupportedCurrency } from '@/lib/currencyUtils';
+
+export type SupportedCurrency = CurrencySupportedCurrency;
+
 export interface User {
   id: string;
   email: string;
@@ -12,6 +17,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   amount: number;
   currency: SupportedCurrency;
+  originalAmount?: number; // Store original amount for accuracy during currency conversions
   description: string;
   category: string;
   date: Date;
@@ -89,8 +95,6 @@ export interface FinancialSummary {
   currency: SupportedCurrency;
   period: 'monthly' | 'yearly';
 }
-
-export type SupportedCurrency = 'GHS' | 'USD' | 'EUR';
 
 export interface ApiResponse<T> {
   data: T;

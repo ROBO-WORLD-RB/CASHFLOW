@@ -8,14 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { suggestSavings } from '@/ai/flows/suggest-savings';
-import { formatGHS } from '@/lib/currencyUtils';
 import { toast } from 'sonner';
 import { useFinancialStore } from '@/store/useFinancialStore';
+import { useCurrency } from '@/hooks/useCurrency';
 import { aiQuerySchema, AIQueryFormData } from '@/lib/validations';
 import { withErrorHandling } from '@/lib/error-handler';
 
 export function AISavingsSuggestion() {
   const { getTotalIncome, getTotalExpenses } = useFinancialStore();
+  const { formatCurrency } = useCurrency();
   
   const {
     register,
@@ -69,16 +70,16 @@ export function AISavingsSuggestion() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-sm text-gray-600">Income</p>
-              <p className="text-lg font-bold text-green-600">{formatGHS(totalIncome)}</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(totalIncome)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Expenses</p>
-              <p className="text-lg font-bold text-red-600">{formatGHS(totalExpenses)}</p>
+              <p className="text-lg font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Available</p>
               <p className={`text-lg font-bold ${availableBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                {formatGHS(availableBalance)}
+                {formatCurrency(availableBalance)}
               </p>
             </div>
           </div>
@@ -93,7 +94,7 @@ export function AISavingsSuggestion() {
             AI Financial Advisor
           </CardTitle>
           <CardDescription>
-            Get personalized savings advice based on your spending patterns and local Ghanaian costs
+            Get personalized savings advice based on your spending patterns and global financial insights
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,7 +138,7 @@ export function AISavingsSuggestion() {
             <div className="text-center space-y-2 pb-4 border-b border-blue-200">
               <h4 className="font-semibold text-blue-800 text-lg">💰 Suggested Monthly Savings</h4>
               <p className="text-3xl font-bold text-blue-600">
-                {formatGHS(suggestion.suggestedSavingsGHS)}
+                {formatCurrency(suggestion.suggestedSavingsGHS)}
               </p>
             </div>
             

@@ -10,13 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { SUPPORTED_CURRENCIES, formatGHS } from '@/lib/currencyUtils';
+import { SUPPORTED_CURRENCIES } from '@/lib/currencyUtils';
 import { createSavingsGoalSchema, CreateSavingsGoalFormData } from '@/lib/validations';
 import { useFinancialStore } from '@/store/useFinancialStore';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 export function SavingsGoalSetup() {
   const { savingsGoals, addSavingsGoal, updateSavingsGoal } = useFinancialStore();
+  const { currentCurrency, formatCurrency } = useCurrency();
   
   // Get the active goal (assuming one active goal for now)
   const currentGoal = savingsGoals.find(goal => goal.isActive) || null;
@@ -33,7 +35,7 @@ export function SavingsGoalSetup() {
     defaultValues: {
       title: currentGoal?.title || '',
       targetAmount: currentGoal?.targetAmount || undefined,
-      currency: currentGoal?.currency || 'GHS',
+      currency: currentGoal?.currency || currentCurrency,
       startDate: currentGoal?.startDate || new Date(),
       endDate: currentGoal?.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       isActive: true
@@ -55,7 +57,7 @@ export function SavingsGoalSetup() {
         reset({
           title: '',
           targetAmount: undefined,
-          currency: 'GHS',
+          currency: currentCurrency,
           startDate: new Date(),
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           isActive: true
@@ -212,7 +214,7 @@ export function SavingsGoalSetup() {
             <div className="space-y-1 text-sm text-gray-600">
               <p className="font-medium">{currentGoal.title}</p>
               {currentGoal.targetAmount && (
-                <p>Target: {formatGHS(currentGoal.targetAmount)}</p>
+                <p>Target: {formatCurrency(currentGoal.targetAmount, currentGoal.currency)}</p>
               )}
               <p>Period: {format(currentGoal.startDate, 'MMM dd, yyyy')} - {format(currentGoal.endDate, 'MMM dd, yyyy')}</p>
             </div>

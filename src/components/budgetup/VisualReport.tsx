@@ -36,6 +36,7 @@ interface VisualReportProps {
     time: string;
     description?: string;
   }>;
+  userCurrency: SupportedCurrency;
 }
 
 export function VisualReport(props: VisualReportProps) {

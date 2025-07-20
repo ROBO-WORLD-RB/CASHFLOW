@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 // Common schemas
-export const currencySchema = z.enum(['GHS', 'USD', 'EUR']);
+import { SUPPORTED_CURRENCIES } from './currencyUtils';
+export const currencySchema = z.enum(SUPPORTED_CURRENCIES as [string, ...string[]]);
 
 export const transactionTypeSchema = z.enum(['income', 'expense']);
 
@@ -41,10 +42,10 @@ export const transactionSchema = z.object({
 export const createTransactionSchema = z.object({
   type: transactionTypeSchema,
   amount: z.number().positive('Amount must be positive'),
-  currency: currencySchema.optional().default('GHS'),
+  currency: currencySchema,
   description: z.string().min(1, 'Description is required'),
   category: z.string().min(1, 'Category is required'),
-  date: z.date().optional().default(() => new Date()),
+  date: z.date(),
 });
 
 // Savings schemas
@@ -90,9 +91,9 @@ export const savingsEntrySchema = z.object({
 export const createSavingsEntrySchema = z.object({
   goalId: z.string().optional(),
   amount: z.number().positive('Amount must be positive'),
-  currency: currencySchema.default('GHS'),
+  currency: currencySchema,
   description: z.string().min(1, 'Description is required'),
-  date: z.date().default(() => new Date()),
+  date: z.date(),
 });
 
 // Group savings schemas
@@ -113,7 +114,7 @@ export const createGroupGoalSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   targetAmount: z.number().positive('Target amount must be positive'),
-  currency: currencySchema.default('GHS'),
+  currency: currencySchema,
   participants: z.array(z.string()).min(1, 'At least one participant is required'),
   createdBy: z.string(),
   isActive: z.boolean().default(true),
@@ -135,7 +136,7 @@ export const groupContributionSchema = z.object({
 export const createGroupContributionSchema = z.object({
   groupId: z.string(),
   amount: z.number().positive('Amount must be positive'),
-  currency: currencySchema.default('GHS'),
+  currency: currencySchema,
   participantName: z.string().min(1, 'Participant name is required'),
   participantId: z.string().optional(),
   date: z.date().default(() => new Date()),
@@ -161,7 +162,7 @@ export const createBudgetCategorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
   budgetedAmount: z.number().positive('Budgeted amount must be positive'),
   spentAmount: z.number().min(0, 'Spent amount cannot be negative').default(0),
-  currency: currencySchema.default('GHS'),
+  currency: currencySchema,
   month: z.number().min(1).max(12).default(() => new Date().getMonth() + 1),
   year: z.number().min(2020).max(2100).default(() => new Date().getFullYear()),
 });

@@ -2,7 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Transaction, SavingsGoal, SavingsEntry, GroupGoal, GroupContribution, BudgetCategory, SupportedCurrency } from '@/types';
 
+interface UserPreferences {
+  name: string;
+  currency: SupportedCurrency;
+  isSetupComplete: boolean;
+}
+
 interface FinancialState {
+  // User preferences
+  userPreferences: UserPreferences | null;
+  
   // Transactions
   transactions: Transaction[];
 
@@ -17,7 +26,15 @@ interface FinancialState {
   // Budget
   budgetCategories: BudgetCategory[];
 
+  // Migration tracking
+  migrationVersion: number;
+
   // Actions
+  setUserPreferences: (preferences: UserPreferences) => void;
+  updateUserPreferences: (updates: Partial<UserPreferences>) => void;
+
+  // Migration actions
+  migrateCurrencyData: () => void;
 
   // Transaction actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => void;
@@ -57,18 +74,155 @@ interface FinancialState {
   getGroupSavingsProgress: (groupId: string) => number;
 }
 
-const generateId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const generateId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+// Migration utility to ensure all transactions have currency data
+const migrateTransactionCurrency = (transactions: Transaction[], defaultCurrency: SupportedCurrency = 'USD'): Transaction[] => {
+  return transactions.map(transaction => {
+    // If transaction doesn't have currency field or it's undefined/null, add default currency
+    if (!transaction.currency) {
+      return {
+        ...transaction,
+        currency: defaultCurrency,
+        // Set originalAmount to current amount if not already set
+        originalAmount: transaction.originalAmount ?? transaction.amount
+      };
+    }
+    
+    // Ensure originalAmount is set for existing transactions
+    if (transaction.originalAmount === undefined) {
+      return {
+        ...transaction,
+        originalAmount: transaction.amount
+      };
+    }
+    
+    return transaction;
+  });
+};
+
+// Migration utility for other financial entities
+const migrateSavingsGoalCurrency = (goals: SavingsGoal[], defaultCurrency: SupportedCurrency = 'USD'): SavingsGoal[] => {
+  return goals.map(goal => {
+    if (!goal.currency) {
+      return {
+        ...goal,
+        currency: defaultCurrency
+      };
+    }
+    return goal;
+  });
+};
+
+const migrateSavingsEntryCurrency = (entries: SavingsEntry[], defaultCurrency: SupportedCurrency = 'USD'): SavingsEntry[] => {
+  return entries.map(entry => {
+    if (!entry.currency) {
+      return {
+        ...entry,
+        currency: defaultCurrency
+      };
+    }
+    return entry;
+  });
+};
+
+const migrateGroupGoalCurrency = (goals: GroupGoal[], defaultCurrency: SupportedCurrency = 'USD'): GroupGoal[] => {
+  return goals.map(goal => {
+    if (!goal.currency) {
+      return {
+        ...goal,
+        currency: defaultCurrency
+      };
+    }
+    return goal;
+  });
+};
+
+const migrateGroupContributionCurrency = (contributions: GroupContribution[], defaultCurrency: SupportedCurrency = 'USD'): GroupContribution[] => {
+  return contributions.map(contribution => {
+    if (!contribution.currency) {
+      return {
+        ...contribution,
+        currency: defaultCurrency
+      };
+    }
+    return contribution;
+  });
+};
+
+const migrateBudgetCategoryCurrency = (categories: BudgetCategory[], defaultCurrency: SupportedCurrency = 'USD'): BudgetCategory[] => {
+  return categories.map(category => {
+    if (!category.currency) {
+      return {
+        ...category,
+        currency: defaultCurrency
+      };
+    }
+    return category;
+  });
+};
 
 export const useFinancialStore = create<FinancialState>()(
   persist(
     (set, get) => ({
       // Initial state
+      userPreferences: null,
       transactions: [],
       savingsGoals: [],
       savingsEntries: [],
       groupGoals: [],
       groupContributions: [],
       budgetCategories: [],
+      migrationVersion: 0,
+
+      // User preference actions
+      setUserPreferences: (preferences) => set({ userPreferences: preferences }),
+      updateUserPreferences: (updates) => {
+        const state = get();
+        if (state.userPreferences) {
+          const oldCurrency = state.userPreferences.currency;
+          const newPreferences = { ...state.userPreferences, ...updates };
+          
+          set({ userPreferences: newPreferences });
+          
+          // Emit currency change event if currency was updated
+          if (updates.currency && updates.currency !== oldCurrency && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('currencyChanged', { 
+              detail: { 
+                oldCurrency, 
+                newCurrency: updates.currency 
+              } 
+            }));
+          }
+        }
+      },
+
+      // Migration actions
+      migrateCurrencyData: () => {
+        const state = get();
+        const defaultCurrency = state.userPreferences?.currency || 'USD';
+        
+        // Migrate all financial data to ensure currency fields exist
+        const migratedTransactions = migrateTransactionCurrency(state.transactions, defaultCurrency);
+        const migratedSavingsGoals = migrateSavingsGoalCurrency(state.savingsGoals, defaultCurrency);
+        const migratedSavingsEntries = migrateSavingsEntryCurrency(state.savingsEntries, defaultCurrency);
+        const migratedGroupGoals = migrateGroupGoalCurrency(state.groupGoals, defaultCurrency);
+        const migratedGroupContributions = migrateGroupContributionCurrency(state.groupContributions, defaultCurrency);
+        const migratedBudgetCategories = migrateBudgetCategoryCurrency(state.budgetCategories, defaultCurrency);
+
+        // Update state with migrated data
+        set({
+          transactions: migratedTransactions,
+          savingsGoals: migratedSavingsGoals,
+          savingsEntries: migratedSavingsEntries,
+          groupGoals: migratedGroupGoals,
+          groupContributions: migratedGroupContributions,
+          budgetCategories: migratedBudgetCategories,
+          migrationVersion: 1 // Update migration version to indicate migration completed
+        });
+
+        console.log('Currency data migration completed successfully');
+      },
 
       // Transaction actions
       addTransaction: (transactionData) => {
@@ -76,7 +230,9 @@ export const useFinancialStore = create<FinancialState>()(
           ...transactionData,
           id: generateId(),
           userId: 'demo-user',
-          createdAt: new Date()
+          createdAt: new Date(),
+          // Ensure originalAmount is set for new transactions
+          originalAmount: transactionData.originalAmount ?? transactionData.amount
         };
 
         const state = get();
@@ -310,7 +466,37 @@ export const useFinancialStore = create<FinancialState>()(
     }),
     {
       name: 'budgetup-financial-store',
-      version: 1,
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        // Handle migration from version 1 to version 2 (currency data migration)
+        if (version < 2) {
+          const state = persistedState as FinancialState;
+          const defaultCurrency = state.userPreferences?.currency || 'USD';
+          
+          // Migrate all financial data to ensure currency fields exist
+          const migratedTransactions = migrateTransactionCurrency(state.transactions || [], defaultCurrency);
+          const migratedSavingsGoals = migrateSavingsGoalCurrency(state.savingsGoals || [], defaultCurrency);
+          const migratedSavingsEntries = migrateSavingsEntryCurrency(state.savingsEntries || [], defaultCurrency);
+          const migratedGroupGoals = migrateGroupGoalCurrency(state.groupGoals || [], defaultCurrency);
+          const migratedGroupContributions = migrateGroupContributionCurrency(state.groupContributions || [], defaultCurrency);
+          const migratedBudgetCategories = migrateBudgetCategoryCurrency(state.budgetCategories || [], defaultCurrency);
+
+          console.log('Migrating currency data from version', version, 'to version 2');
+          
+          return {
+            ...state,
+            transactions: migratedTransactions,
+            savingsGoals: migratedSavingsGoals,
+            savingsEntries: migratedSavingsEntries,
+            groupGoals: migratedGroupGoals,
+            groupContributions: migratedGroupContributions,
+            budgetCategories: migratedBudgetCategories,
+            migrationVersion: 2
+          };
+        }
+        
+        return persistedState;
+      }
     }
   )
 );

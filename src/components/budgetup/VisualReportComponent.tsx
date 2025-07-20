@@ -8,7 +8,8 @@ import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { formatCurrency, convertCurrency, SupportedCurrency } from '@/lib/currencyUtils';
+import { SupportedCurrency } from '@/lib/currencyUtils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface SavingsEntry {
   id: string;
@@ -44,6 +45,7 @@ interface VisualReportComponentProps {
   savingsGoal?: SavingsGoal | null;
   savingsEntries: SavingsEntry[];
   groupSavings: GroupContribution[];
+  userCurrency?: SupportedCurrency;
 }
 
 export default function VisualReportComponent({
@@ -51,16 +53,20 @@ export default function VisualReportComponent({
   expenses,
   savingsGoal,
   savingsEntries,
-  groupSavings
+  groupSavings,
+  userCurrency
 }: VisualReportComponentProps) {
+  const { currentCurrency, formatCurrency, convertCurrency } = useCurrency();
+  const displayCurrency = userCurrency || currentCurrency;
+
   // Calculate personal savings total
   const personalSavingsTotal = savingsEntries.reduce((sum, entry) => {
-    return sum + convertCurrency(entry.amount, entry.currency, 'GHS');
+    return sum + convertCurrency(entry.amount, entry.currency);
   }, 0);
 
   // Calculate group savings total
   const groupSavingsTotal = groupSavings.reduce((sum, contribution) => {
-    return sum + convertCurrency(contribution.amount, contribution.currency, 'GHS');
+    return sum + convertCurrency(contribution.amount, contribution.currency);
   }, 0);
 
   // Allocation pie chart data
@@ -76,18 +82,18 @@ export default function VisualReportComponent({
     if (!savingsGoal) return [];
 
     const filteredEntries = savingsEntries.filter(entry => 
-      entry.date >= savingsGoal.startDate && entry.date <= savingsGoal.endDate
+      new Date(entry.date) >= new Date(savingsGoal.startDate) && new Date(entry.date) <= new Date(savingsGoal.endDate)
     );
 
-    const sortedEntries = [...filteredEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const sortedEntries = [...filteredEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     let runningTotal = 0;
     return sortedEntries.map(entry => {
-      runningTotal += convertCurrency(entry.amount, entry.currency, 'GHS');
+      runningTotal += convertCurrency(entry.amount, entry.currency);
       return {
-        date: format(entry.date, 'MMM dd'),
+        date: format(new Date(entry.date), 'MMM dd'),
         cumulative: runningTotal,
-        target: savingsGoal.targetAmount ? convertCurrency(savingsGoal.targetAmount, savingsGoal.currency, 'GHS') : undefined
+        target: savingsGoal.targetAmount ? convertCurrency(savingsGoal.targetAmount, savingsGoal.currency) : undefined
       };
     });
   };
@@ -113,11 +119,11 @@ export default function VisualReportComponent({
 
   // Calculate goal progress
   const goalProgress = savingsGoal?.targetAmount 
-    ? (personalSavingsTotal / convertCurrency(savingsGoal.targetAmount, savingsGoal.currency, 'GHS')) * 100
+    ? (personalSavingsTotal / convertCurrency(savingsGoal.targetAmount, savingsGoal.currency)) * 100
     : 0;
 
   const daysLeft = savingsGoal?.endDate 
-    ? Math.max(0, Math.ceil((savingsGoal.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.ceil((new Date(savingsGoal.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
 
   return (
@@ -125,7 +131,7 @@ export default function VisualReportComponent({
       {/* Allocation Pie Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Income Allocation (GHS)</CardTitle>
+          <CardTitle>Income Allocation ({displayCurrency})</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -145,7 +151,7 @@ export default function VisualReportComponent({
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value: number) => [formatCurrency(value, 'GHS'), 'Amount']}
+                formatter={(value: number) => [formatCurrency(value), 'Amount']}
               />
               <Legend />
             </PieChart>
@@ -165,7 +171,7 @@ export default function VisualReportComponent({
                 <p className="text-sm text-gray-600">Target Amount</p>
                 <p className="text-lg font-semibold">
                   {savingsGoal.targetAmount 
-                    ? formatCurrency(convertCurrency(savingsGoal.targetAmount, savingsGoal.currency, 'GHS'), 'GHS')
+                    ? formatCurrency(convertCurrency(savingsGoal.targetAmount, savingsGoal.currency))
                     : 'No target set'
                   }
                 </p>
@@ -185,7 +191,7 @@ export default function VisualReportComponent({
               </div>
               <Progress value={Math.min(goalProgress, 100)} className="w-full" />
               <p className="text-sm text-gray-600">
-                {formatCurrency(personalSavingsTotal, 'GHS')} saved • {daysLeft} days left
+                {formatCurrency(personalSavingsTotal)} saved • {daysLeft} days left
               </p>
             </div>
           </CardContent>
@@ -196,7 +202,7 @@ export default function VisualReportComponent({
       {savingsGoal && savingsTrendData.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Personal Savings Trend (GHS)</CardTitle>
+            <CardTitle>Personal Savings Trend ({displayCurrency})</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -205,7 +211,7 @@ export default function VisualReportComponent({
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value, 'GHS'), 'Amount']}
+                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
                 />
                 <Line 
                   type="monotone" 
@@ -243,7 +249,7 @@ export default function VisualReportComponent({
       {/* Monthly Trends */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Trends Overview (GHS)</CardTitle>
+          <CardTitle>Monthly Trends Overview ({displayCurrency})</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -252,7 +258,7 @@ export default function VisualReportComponent({
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip 
-                formatter={(value: number) => [formatCurrency(value, 'GHS'), 'Amount']}
+                formatter={(value: number) => [formatCurrency(value), 'Amount']}
               />
               <Legend />
               <Line 

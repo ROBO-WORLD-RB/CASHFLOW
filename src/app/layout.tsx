@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { DevDataResetPanel } from "@/components/dev/DataResetPanel";
+import "@/utils/devConsoleCommands"; // Initialize dev console commands
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +31,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <CurrencyProvider>
+          {children}
+        </CurrencyProvider>
         <Toaster />
       </body>
     </html>
